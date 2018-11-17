@@ -8,11 +8,11 @@ class Net(nn.Module):
 
         # classes
         self.fc1_c = nn.Linear(809, 512)
-        self.fc1_c = nn.Linear(512, 512)
+        self.fc2_c = nn.Linear(512, 512)
 
         # views
         self.fc1_v = nn.Linear(4, 512)
-        self.fc1_v = nn.Linear(512, 512)
+        self.fc2_v = nn.Linear(512, 512)
 
         # transforms
         self.fc1_t = nn.Linear(12, 512)
@@ -33,8 +33,24 @@ class Net(nn.Module):
         # self.conv3_1 = nn.Conv2d(, kernel_size=3)
         # self.upconv4 = nn.Conv2d(, kernel_size=3)
 
-    def forward(self, cls, v, t):
+    def forward(self, c, v, t):
 
-        # each layer
-        # F.relu()
-        pass
+        # each layer add F.relu()
+        c = self.fc1_c(c)
+        c = self.fc2_c(c)
+
+        v = self.fc1_v(v)
+        v = self.fc2_v(v)
+
+        t = self.fc1_t(t)
+        t = self.fc2_t(t)
+
+        x = torch.cat([c, v, t], dim=1)
+
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = F.relu(self.fc5(x))
+
+        
+
+        return x
