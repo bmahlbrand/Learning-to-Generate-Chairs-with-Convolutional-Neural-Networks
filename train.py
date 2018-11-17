@@ -14,14 +14,13 @@ from utils.config_utils import load_config
 from utils.Timer import Timer
 from utils.AverageMeter import AverageMeter
 
-from modules.model import model
+from modules.model import Net
 # from data import PoseDataset
 
 from utils import viz_utils
 from utils import torch_utils
 from utils.fs_utils import create_folder
 
-from demo import test_example
 # system
 import argparse
 import time
@@ -304,8 +303,7 @@ for epoch in range(start_epoch, args.epochs + 1):
     # history['validation_accuracy'].append(val_acc)
 
     scheduler.step(val_loss)
-
-    test_example(model, 'test_example.png', [184, 184])
+    
     # is_best = val_loss < best_val_loss
     # is_best = val_acc > best_val_acc
 
