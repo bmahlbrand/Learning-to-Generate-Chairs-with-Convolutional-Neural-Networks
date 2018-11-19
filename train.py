@@ -115,11 +115,13 @@ def train(epoch, model, optimizer, criterion, loader, device, log_callback):
         #                                         policy_parameter=config.policy_parameter, multiple=multiple)
         data_time.update(time.time() - end)
 
-        output = model(input)
+        output, mask = model(input)
 
         # viz_utils.plot_heatmap(heat1.cpu().detach().numpy())
 
         loss = criterion(output, target)
+        # loss2 = criterion(mask, target)
+
         losses.update(loss.item(), input.size(0))
 
         optimizer.zero_grad()
@@ -270,7 +272,7 @@ model = Net()
 optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, dampening=.01)
 scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=3, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=2, min_lr=0, eps=1e-08)
 
-criterion = nn.MSELoss()
+criterion = nn.NLLLoss()
 
 if args.resume:
     start_epoch, model, optimizer, scheduler = torch_utils.load(args.resume, model, optimizer, start_epoch, scheduler)
