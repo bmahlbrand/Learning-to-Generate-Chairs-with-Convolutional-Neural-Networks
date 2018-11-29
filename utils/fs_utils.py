@@ -71,7 +71,7 @@ def load_files_folder_into_list(folderPath):
 
 def get_all_filenames(root_dir, wildcard):
     # return [s.rsplit('\\')[-1] for s in glob.glob(os.path.join(root_dir, wildcard))]
-    return glob.glob(os.path.join(root_dir, wildcard))
+    return glob.glob(os.path.join(root_dir, wildcard), recursive=True)
 
 # def get_all_filenames(root_dir, extension):
 #     """get train or val images

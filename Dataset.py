@@ -1,6 +1,7 @@
 import torch
 from torch.utils import data
 from utils.fs_utils import get_all_filenames
+import os
 
 class Dataset():
     def __init__(self, folderPath):
@@ -15,9 +16,12 @@ class Dataset():
     def __getitem__(self, index):
 
         filename = self.files[index]
+        X = torch.load(filename)
+
+        path, filename = os.path.split(filename)
 
         pieces = filename.split('_')
-        X = torch.load('datasets/' + filename)
+        
         #parse the parameters from file name and return those too
         pieces = name.split('_')[1:] #split and throw images away
 
@@ -44,3 +48,7 @@ if __name__ == '__main__':
     print('theta: ', theta)
     print('phi: ', phi)
     print('rho: ', rho)
+
+    for fullpath in get_all_filenames('//ark/E/datasets/rendered_chairs/', '**/*.png'):
+        path, filename = os.path.split(fullpath)
+        print(filename)
