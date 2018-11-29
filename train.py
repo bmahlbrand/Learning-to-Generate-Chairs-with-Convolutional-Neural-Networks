@@ -86,7 +86,7 @@ def parse_cli():
 
     parser.add_argument('--val_dir', default='datasets/lsp_dataset', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')                    
-                        
+
     args = parser.parse_args()
 
     return args
@@ -235,7 +235,9 @@ torch.utils.data.DataLoader(Dataset(train_dir), batch_size=args.batch_size, shuf
 
 start_epoch = 1
 model = Net()
-optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, dampening=.01)
+# optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, dampening=.01)
+optimizer = optim.Adam(m.parameters(), lr=lr)
+
 scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=3, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=2, min_lr=0, eps=1e-08)
 
 criterion = nn.NLLLoss()
