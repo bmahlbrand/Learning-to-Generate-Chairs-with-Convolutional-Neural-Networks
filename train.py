@@ -147,18 +147,18 @@ def train(epoch, model, optimizer, criterion, loader, device, log_callback):
                 100. * batch_idx / len(loader), loss.item()))
             log_callback()
             
-            for cnt in range(0, 6):
-                log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
-                        .format(cnt + 1, loss1=losses_list[cnt]))
+            log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
+                    .format(1, loss1=loss))
             
+            log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
+                    .format(2, loss1=loss2))
+
             log_callback()
             log_callback("current time: " + Timer.timeString())
             
             batch_time.reset()
             data_time.reset()
             losses.reset()
-            for cnt in range(6):
-                losses_list[cnt].reset()
 
     torch_utils.save(folderPath + 'ChairCNN_' + str(epoch) + '.cpkt', epoch, model, optimizer, scheduler)
 
@@ -209,9 +209,13 @@ def validation(model, criterion, loader, device, log_callback):
             epoch, batch_idx, batch_time=batch_time,
             data_time=data_time, loss=losses))
         
-        for cnt in range(0, 6):
-            log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
-                    .format(cnt + 1, loss1=losses_list[cnt]))
+        log_callback()
+        
+        log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
+                .format(1, loss1=loss))
+        
+        log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
+                .format(2, loss1=loss2))
 
         log_callback(Timer.timeString())
 
