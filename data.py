@@ -1,5 +1,6 @@
 import torch
 from torch.utils import data
+from utils.fs_utils import get_all_filenames
 
 class Dataset(data.Dataset):
   def __init__(self, folderPath):
