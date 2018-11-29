@@ -86,9 +86,7 @@ def parse_cli():
 
     parser.add_argument('--val_dir', default='datasets/lsp_dataset', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')                    
-    ##### convposemachine specific
-    parser.add_argument('--stages', type=int, default=6, metavar='N',
-                        help='network T stages for the model (default: 6)')
+                        
     args = parser.parse_args()
 
     return args
