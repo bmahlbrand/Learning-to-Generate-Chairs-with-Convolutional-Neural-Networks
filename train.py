@@ -25,9 +25,11 @@ from utils.fs_utils import create_folder
 import argparse
 import time
 
+create_folder('checkpoints')
 folderPath = 'checkpoints/session_' + Timer.timeFilenameString() + '/'
 create_folder(folderPath)
 
+create_folder('logs')
 logPath = 'logs/log_' + Timer.timeFilenameString()
 
 def append_line_to_log(line = '\n'):
