@@ -6,7 +6,7 @@ import os
 class Dataset():
     def __init__(self, folderPath):
 
-        self.files = get_all_filenames(folderPath, '/*.png')
+        self.files = get_all_filenames(folderPath, '**/*.png')
         print('loaded ', len(self.files), ' files')
         # print(self.files)
 

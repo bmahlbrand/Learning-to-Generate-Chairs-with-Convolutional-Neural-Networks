@@ -15,7 +15,7 @@ from utils.Timer import Timer
 from utils.AverageMeter import AverageMeter
 
 from modules.model import Net
-# from data import PoseDataset
+from data import Dataset
 
 from utils import viz_utils
 from utils import torch_utils
@@ -81,12 +81,11 @@ def parse_cli():
     parser.add_argument('--workers', type=int, default=0, metavar='W',
                         help='workers (default: 0)')
 
-    parser.add_argument('--train_dir', default='datasets/lspet_dataset', type=str, metavar='PATH',
+    parser.add_argument('--train_dir', default='//ark/E/datasets/rendered_chairs/', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
 
     parser.add_argument('--val_dir', default='datasets/lsp_dataset', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')                    
-
     ##### convposemachine specific
     parser.add_argument('--stages', type=int, default=6, metavar='N',
                         help='network T stages for the model (default: 6)')
@@ -229,44 +228,7 @@ args = parse_cli()
 train_dir = args.train_dir
 val_dir = args.val_dir
 
-# config = Config(args.config)
-# cudnn.benchmark = True
-
-# train
-# train_loader = torch.utils.data.DataLoader(
-#     # PoseDataset('lspet', train_dir, 8,
-#     PoseDataset(train_dir,
-#             # transforms.Compose(
-#             #     [
-#             #     transforms.Resize((368, 368)),
-#             #     # transforms.RandomResized(),
-#             #     transforms.RandomRotation(40.),
-#             #     transforms.RandomCrop(368),
-#             #     transforms.RandomHorizontalFlip(),
-#             #     transforms.ToTensor()
-#             #     ]
-#             # )
-#             myTransforms.Compose([
-#                 # myTransforms.RandomResized(),
-#                 # myTransforms.RandomRotate(40),
-#         myTransforms.TestResized(368)
-#                 # myTransforms.RandomCrop(368),
-#                 # myTransforms.RandomHorizontalFlip()
-#                 ])
-#         ),
-#         batch_size=args.batch_size, shuffle=True,
-#         num_workers=args.workers, pin_memory=True)
-
-# # val
-# val_loader = torch.utils.data.DataLoader(
-#     # PoseDataset('lsp', val_dir, 8,
-#     #                     transforms.Compose([transforms.Resize((368, 368))])),
-#     PoseDataset(val_dir, myTransforms.Compose([
-#         # transforms.Resize((368, 368))
-#         myTransforms.TestResized(368)
-#         ])),
-#     batch_size=args.batch_size, shuffle=True,
-#     num_workers=args.workers, pin_memory=True)
+torch.utils.data.DataLoader(Dataset(train_dir), batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
 
 # criterion = nn.MSELoss().cuda()
 
