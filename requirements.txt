@@ -1,3 +1,13 @@
+pyyaml
+numpy
+scipy
+matplotlib
+pycuda
+
 torch
 torchvision
-panda3d
+
+#opengl stuff
+glfw
+pyopengl
+pillow
