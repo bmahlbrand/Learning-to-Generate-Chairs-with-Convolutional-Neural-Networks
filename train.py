@@ -15,7 +15,7 @@ from utils.Timer import Timer
 from utils.AverageMeter import AverageMeter
 
 from modules.model import Net
-from data import Dataset
+from Dataset import Dataset
 
 from utils import viz_utils
 from utils import torch_utils
@@ -42,8 +42,6 @@ params = load_config('config.yaml')
 
 batch_time = AverageMeter()
 data_time = AverageMeter()
-losses = AverageMeter()
-losses_list = [AverageMeter() for i in range(6)]
 end = time.time()
 best_model = params['best_model']
 
@@ -64,6 +62,15 @@ def parse_cli():
 
     parser.add_argument('--momentum', type=float, default=params['momentum'], metavar='M',
                         help='SGD momentum (default: ' + str(params['momentum']) + ')')
+                        
+    parser.add_argument('--beta1', type=float, default=params['beta1'], metavar='B1',
+                        help=' Adam parameter beta1 (default: ' + str(params['beta1']) + ')')
+
+    parser.add_argument('--beta2', type=float, default=params['beta2'], metavar='B2',
+                        help=' Adam parameter beta2 (default: ' + str(params['beta2']) + ')')                    
+                        
+    parser.add_argument('--epsilon', type=float, default=params['epsilon'], metavar='EL',
+                        help=' Adam regularization parameter (default: ' + str(params['epsilon']) + ')')
 
     parser.add_argument('--dampening', type=float, default=params['dampening'], metavar='DA',
                         help='SGD dampening (default: ' + str(params['dampening']) + ')')
@@ -91,7 +98,7 @@ def parse_cli():
 
     return args
 
-def train(epoch, model, optimizer, criterion, loader, device, log_callback):
+def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device, log_callback):
     
     end = time.time()
     model.train()
@@ -115,13 +122,10 @@ def train(epoch, model, optimizer, criterion, loader, device, log_callback):
         data_time.update(time.time() - end)
 
         output, mask = model(input)
-
-        # viz_utils.plot_heatmap(heat1.cpu().detach().numpy())
-
-        loss = criterion(output, target)
-        # loss2 = criterion(mask, target)
-
-        losses.update(loss.item(), input.size(0))
+        
+        loss1 = criterion1(output, target)
+        loss2 = criterion2(mask, target)
+        loss = loss1 + lamb * loss2
 
         optimizer.zero_grad()
         loss.backward()
@@ -134,10 +138,9 @@ def train(epoch, model, optimizer, criterion, loader, device, log_callback):
             log_callback('Epoch: {0}\t'
                     'Time {batch_time.sum:.3f}s / {1} batches, ({batch_time.avg:.3f})\t'
                     'Data load {data_time.sum:.3f}s / {1} batches, ({data_time.avg:3f})\n'
-                    'Learning rate = {2}\n'
-                    'Loss = {loss.val:.8f} (average = {loss.avg:.8f})\n'.format(
+                    'Learning rate = {2}\n'.format(
                 epoch, args.log_interval, learning_rate, batch_time=batch_time,
-                data_time=data_time, loss=losses))
+                data_time=data_time))
             
             log_callback('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(input), len(loader.dataset),
@@ -145,7 +148,7 @@ def train(epoch, model, optimizer, criterion, loader, device, log_callback):
             log_callback()
             
             log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
-                    .format(1, loss1=loss))
+                    .format(1, loss1=loss1))
             
             log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
                     .format(2, loss1=loss2))
@@ -155,11 +158,10 @@ def train(epoch, model, optimizer, criterion, loader, device, log_callback):
             
             batch_time.reset()
             data_time.reset()
-            losses.reset()
 
     torch_utils.save(folderPath + 'ChairCNN_' + str(epoch) + '.cpkt', epoch, model, optimizer, scheduler)
 
-def validation(model, criterion, loader, device, log_callback):
+def validation(model, criterion1, criterion2, lamb, loader, device, log_callback):
     end = time.time()
     model.eval()
     # validation_loss = 0.0
@@ -183,11 +185,11 @@ def validation(model, criterion, loader, device, log_callback):
         for batch_idx, (input, target) in enumerate(loader):
             input, target = input.to(device, non_blocking=True), target.to(device, non_blocking=True)
             
-            output = model(input)
+            output, mask = model(input)
 
-            loss = criterion(output, target)
-
-            losses.update(loss.item(), input.size(0))
+            loss1 = criterion1(output, target)
+            loss2 = criterion2(mask, target)
+            loss = loss1 + lamb * loss2
 
             batch_time.update(time.time() - end)
             end = time.time()
@@ -217,16 +219,16 @@ def validation(model, criterion, loader, device, log_callback):
         log_callback(Timer.timeString())
 
         batch_time.reset()
-        losses.reset()
 
-        return losses.avg, 0.
+        return loss, 0.
 
 args = parse_cli()
 
 train_dir = args.train_dir
 val_dir = args.val_dir
 
-torch.utils.data.DataLoader(Dataset(train_dir), batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
+train_loader = torch.utils.data.DataLoader(Dataset(train_dir), batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
+val_loader = torch.utils.data.DataLoader(Dataset(val_dir), batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
 
 # criterion = nn.MSELoss().cuda()
 
@@ -236,11 +238,15 @@ torch.utils.data.DataLoader(Dataset(train_dir), batch_size=args.batch_size, shuf
 start_epoch = 1
 model = Net()
 # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, dampening=.01)
-optimizer = optim.Adam(m.parameters(), lr=lr)
+optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), eps=args.epsilon)
 
 scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=3, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=2, min_lr=0, eps=1e-08)
 
-criterion = nn.NLLLoss()
+criterion1 = nn.MSELoss(size_average=False) # we compute the sum of MSE instead of the average of it.
+#criterion2 = nn.MSELoss(size_average=False) # if criterion for segmentation is MSE loss
+criterion2 = nn.NLLLoss() # if criterion for segmentation is NLL loss
+#lam = 0.1 # if criterion2 is squared Eulidean distance
+lam = 100  # if criterion2 is NLLLoss
 
 if args.resume:
     start_epoch, model, optimizer, scheduler = torch_utils.load(args.resume, model, optimizer, start_epoch, scheduler)
@@ -252,10 +258,10 @@ append_line_to_log('executing on device: ')
 append_line_to_log(str(device))
 
 model.to(device)
-criterion.to(device)
+criterion1.to(device)
+criterion2.to(device)
 
 torch.backends.cudnn.benchmark = True
-
 
 history = {'losses': [], 'validation_accuracy': []}
 
