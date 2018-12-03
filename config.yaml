@@ -1,10 +1,18 @@
-weight_decay: 0.0005
+# Adam parameters
+beta1: 0.9
+beta2: 0.999
+epsilon: 1e-6
+
+# hyperparameters
+learning_rate: 1e-4
+batch_size: 128
+epochs: 100  # not sure what it is.
+decay: 0
+dampening: 0
+weight_decay: 1e-4
 momentum: 0.9
-dampening: .1
-decay: .1
-learning_rate: 1e-6
-batch_size: 6
-epochs: 100
+
+# system parameters
 log_interval: 100
 seed: 1
 best_model: best_model.pth
