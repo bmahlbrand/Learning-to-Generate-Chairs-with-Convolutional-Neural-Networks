@@ -33,6 +33,37 @@ class Dataset():
 
         return X, phi, theta, rho
 
+# dataset = Dataset('datasets/lspet_dataset', myTransforms.Compose([myTransforms.TestResized((368, 368))]))
+# loader = DataLoader(
+#     dataset,
+#     batch_size=10,
+#     num_workers=0,
+#     shuffle=False
+# )
+
+def computeStatistics(loader):
+
+    mean = 0.
+    std = 0.
+    nb_samples = 0.
+
+    for data in loader:
+        batch_samples = data.size(0)
+        data = data.view(batch_samples, data.size(1), -1)
+        mean += data.mean(2).sum(0)
+        std += data.std(2).sum(0)
+        nb_samples += batch_samples
+
+    mean /= nb_samples
+    std /= nb_samples
+
+    return mean, std
+
+# if __name__ == '__main__':
+#     print('computing std and mean of LSPet')
+#     print(computeStatistics(dataset))
+
+
 if __name__ == '__main__':
 
     name = 'image_000_p001_t002_r003.png'
