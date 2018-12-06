@@ -1,22 +1,39 @@
 import os
 import re
+
+import numpy as np
 from numpy import newaxis
+import pandas
+from skimage import io
+from matplotlib import pyplot as plt
+import pandas as pd
+
 import torch
 from torch.utils import data
 from torchvision import transforms
 import torchvision.transforms.functional as F
 from utils.fs_utils import get_all_filenames
-from skimage import io
-from matplotlib import pyplot as plt
+
 
 class Dataset():
-    def __init__(self, folderPath, output_size=128):
+    def __init__(self, folderPath, is_train=True, output_size=128):
         """
-         folderPath: like "../data/rendered_chairs"
-         output_size: the desired output size of images and masks, in the paper, it is 64, 128, or 256. 
+         Arguments:
+            is_train: whether used for training or validataion
+            folderPath: like "../data", is the folder storing chairs.train.csv and chairs.valid.csv 
+            output_size: the desired output size of images and masks, in the paper, it is 64, 128, or 256.             
         """
-        # get the list of image and mask filenames
-        self.images = get_all_filenames(folderPath, '**/**/*.png')[0:809]
+        # get the path of train.csv and valid.csv
+        if is_train:
+            csv_path = folderPath + '/chairs.train.csv'
+            print("loading train dataset")
+        else:
+            csv_path = folderPath + '/chairs.valid.csv'
+            print("loading validataion dataset")    
+        # read the data
+        self.data_info = pd.read_csv(csv_path, header=None)
+        # get the image path
+        self.images =  np.asarray(self.data_info.iloc[:, 0])
         self.masks = [re.sub(r'render', r'mask', image) for image in self.images]
         print('loaded ', len(self.images), ' files')
         # print(self.files)
@@ -67,7 +84,7 @@ class Dataset():
 
 if __name__ == '__main__':
 
-    image, mask, phi, theta, rho = Dataset('../data/rendered_chairs/').__getitem__(100)
+    image, mask, phi, theta, rho = Dataset('../data', is_train=False).__getitem__(100)
     print(image.size())
     print(mask.size())
     print(image.numpy().shape)
