@@ -42,6 +42,8 @@ params = load_config('config.yaml')
 
 batch_time = AverageMeter()
 data_time = AverageMeter()
+losses = AverageMeter()
+losses_list = [AverageMeter() for i in range(6)]
 end = time.time()
 best_model = params['best_model']
 
@@ -54,15 +56,12 @@ def parse_cli():
                         help='number of epochs to train (default: ' + str(params['epochs']) + ')')
 
     ## hyperparameters
-    parser.add_argument('--lr', type=float, default=params['learning_rate'], metavar='LR',
-                        help='learning rate (default: ' + str(params['learning_rate']) + ')')
+    parser.add_argument('--lr', type=float, default=params['init_learning_rate'], metavar='LR',
+                        help='inital learning rate (default: ' + str(params['init_learning_rate']) + ')')
 
     parser.add_argument('--decay', type=float, default=params['decay'], metavar='DE',
                         help='SGD learning rate decay (default: ' + str(params['decay']) + ')')
 
-    parser.add_argument('--momentum', type=float, default=params['momentum'], metavar='M',
-                        help='SGD momentum (default: ' + str(params['momentum']) + ')')
-                        
     parser.add_argument('--beta1', type=float, default=params['beta1'], metavar='B1',
                         help=' Adam parameter beta1 (default: ' + str(params['beta1']) + ')')
 
@@ -88,10 +87,10 @@ def parse_cli():
     parser.add_argument('--workers', type=int, default=0, metavar='W',
                         help='workers (default: 0)')
 
-    parser.add_argument('--train_dir', default='//ark/E/datasets/rendered_chairs/', type=str, metavar='PATH',
+    parser.add_argument('--train_dir', default='../data', type=str, metavar='PATHT',
                         help='path to latest checkpoint (default: none)')
 
-    parser.add_argument('--val_dir', default='datasets/lsp_dataset', type=str, metavar='PATH',
+    parser.add_argument('--val_dir', default='../data', type=str, metavar='PATHV',
                         help='path to latest checkpoint (default: none)')                    
 
     args = parser.parse_args()
@@ -113,20 +112,28 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
     for param_group in optimizer.param_groups:
         learning_rate = param_group['lr']
 
-    for batch_idx, (input, target) in enumerate(train_loader):
-        input, target = input.to(device, non_blocking=True), target.to(device, non_blocking=True)
+    # the output of the dataloader is (batch_idx, image, mask, phi, theta, rho)
+    for batch_idx, data in enumerate(loader):
+        target_image, target_mask, phi, theta, rho = data
+        target_image = target_image.to(device, non_blocking=True)
+        target_mask = target_mask.to(device, non_blocking=True)
+        phi = phi.to(device, non_blocking=True)
+        theta = theta.to(device, non_blocking=True)
+        rho = rho.to(device, non_blocking=True)
 
         # learning_rate = 0.
         # learning_rate = adjust_learning_rate(optimizer, iters, config.base_lr, policy=config.lr_policy,
         #                                         policy_parameter=config.policy_parameter, multiple=multiple)
         data_time.update(time.time() - end)
+        ###############################################333
+        out_image, out_mask = model()
+        ################################################3#
+        # viz_utils.plot_heatmap(heat1.cpu().detach().numpy())
 
-        output, mask = model(input)
+        loss1 = criterion1(out_image, target_image)
+        loss2 = criterion2(out_mask, target_mask)
+        loss = loss1 + lamb * loss2 
         
-        loss1 = criterion1(output, target)
-        loss2 = criterion2(mask, target)
-        loss = loss1 + lamb * loss2
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -138,9 +145,10 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
             log_callback('Epoch: {0}\t'
                     'Time {batch_time.sum:.3f}s / {1} batches, ({batch_time.avg:.3f})\t'
                     'Data load {data_time.sum:.3f}s / {1} batches, ({data_time.avg:3f})\n'
-                    'Learning rate = {2}\n'.format(
+                    'Learning rate = {2}\n'
+                    'Loss = {loss.val:.8f} (average = {loss.avg:.8f})\n'.format(
                 epoch, args.log_interval, learning_rate, batch_time=batch_time,
-                data_time=data_time))
+                data_time=data_time, loss=loss.item()))
             
             log_callback('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(input), len(loader.dataset),
@@ -148,7 +156,7 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
             log_callback()
             
             log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
-                    .format(1, loss1=loss1))
+                    .format(1, loss1=loss))
             
             log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
                     .format(2, loss1=loss2))
@@ -158,6 +166,7 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
             
             batch_time.reset()
             data_time.reset()
+            losses.reset()
 
     torch_utils.save(folderPath + 'ChairCNN_' + str(epoch) + '.cpkt', epoch, model, optimizer, scheduler)
 
@@ -182,15 +191,37 @@ def validation(model, criterion1, criterion2, lamb, loader, device, log_callback
 
     # return validation_loss, validation_acc
     with torch.no_grad():
+        # the output of the dataloader is (batch_idx, image, mask, phi, theta, rho)
+        for batch_idx, data in enumerate(loader):
+            target_image, target_mask, phi, theta, rho = data
+            target_image = target_image.to(device, non_blocking=True)
+            target_mask = target_mask.to(device, non_blocking=True)
+            phi = phi.to(device, non_blocking=True)
+            theta = theta.to(device, non_blocking=True)
+            rho = rho.to(device, non_blocking=True)
+
+        # learning_rate = 0.
+        # learning_rate = adjust_learning_rate(optimizer, iters, config.base_lr, policy=config.lr_policy,
+        #                                         policy_parameter=config.policy_parameter, multiple=multiple)
+        data_time.update(time.time() - end)
+        ###############################################333
+        out_image, out_mask = model()
+        ################################################3#
+        # viz_utils.plot_heatmap(heat1.cpu().detach().numpy())
+
+        loss1 = criterion1(out_image, target_image)
+        loss2 = criterion2(out_mask, target_mask)
+        loss = loss1 + lamb * loss2 
         for batch_idx, (input, target) in enumerate(loader):
             input, target = input.to(device, non_blocking=True), target.to(device, non_blocking=True)
-            
-            output, mask = model(input)
+    ##############################################################################3        
+            out_image, out_mask = model(input)
 
-            loss1 = criterion1(output, target)
-            loss2 = criterion2(mask, target)
-            loss = loss1 + lamb * loss2
-
+            loss1 = criterion1(out_image, target)
+            loss2 = criterion2(out_mask, target)
+            loss = loss1 + lam * loss2
+            #losses.update(loss.item(), input.size(0))
+    ##############################################################################
             batch_time.update(time.time() - end)
             end = time.time()
             # is_best = losses.avg < best_model
@@ -219,17 +250,19 @@ def validation(model, criterion1, criterion2, lamb, loader, device, log_callback
         log_callback(Timer.timeString())
 
         batch_time.reset()
-
-        return loss, 0.
+        losses.reset()
+########################Is there some problem here with 0.??######################
+        return losses.avg, 0.
+###################################################################################        
 
 args = parse_cli()
 
 train_dir = args.train_dir
 val_dir = args.val_dir
-
-train_loader = torch.utils.data.DataLoader(Dataset(train_dir), batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
-val_loader = torch.utils.data.DataLoader(Dataset(val_dir), batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
-
+#################################################################################################################################################33
+train_loader = torch.utils.data.DataLoader(Dataset(train_dir, is_train=True), batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
+val_loader = torch.utils.data.DataLoader(Dataset(val_dir, is_train=False), batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
+########################################################################################################################################################
 # criterion = nn.MSELoss().cuda()
 
 # optimizer = torch.optim.SGD(params, config.base_lr, momentum=config.momentum,
@@ -237,17 +270,18 @@ val_loader = torch.utils.data.DataLoader(Dataset(val_dir), batch_size=args.batch
 
 start_epoch = 1
 model = Net()
+##############################################################################33
 # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, dampening=.01)
 optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), eps=args.epsilon)
-
+#################################################################################3
 scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=3, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=2, min_lr=0, eps=1e-08)
-
+##########################################################################33
 criterion1 = nn.MSELoss(size_average=False) # we compute the sum of MSE instead of the average of it.
 #criterion2 = nn.MSELoss(size_average=False) # if criterion for segmentation is MSE loss
 criterion2 = nn.NLLLoss() # if criterion for segmentation is NLL loss
 #lam = 0.1 # if criterion2 is squared Eulidean distance
 lam = 100  # if criterion2 is NLLLoss
-
+############################################################################33
 if args.resume:
     start_epoch, model, optimizer, scheduler = torch_utils.load(args.resume, model, optimizer, start_epoch, scheduler)
     append_line_to_log('resuming ' + args.resume + '... at epoch ' + str(start_epoch))
@@ -258,10 +292,12 @@ append_line_to_log('executing on device: ')
 append_line_to_log(str(device))
 
 model.to(device)
+##################################################################
 criterion1.to(device)
 criterion2.to(device)
-
+###################################################################
 torch.backends.cudnn.benchmark = True
+
 
 history = {'losses': [], 'validation_accuracy': []}
 
@@ -270,14 +306,16 @@ best_val_acc = 0.
 
 for epoch in range(start_epoch, args.epochs + 1):
     
+    #####################################################################33
     # loss = 
-    train(epoch, model, optimizer, criterion, train_loader, device, append_line_to_log)
+    train(epoch, model, optimizer, criterion1, criterion2, lam, train_loader, device, append_line_to_log)
     # history['losses'].extend(loss)
 
-    val_loss, val_acc = validation(model, criterion, val_loader, device, append_line_to_log)
+    val_loss, val_acc = validation(model, criterion1, criterion2, lam,  val_loader, device, append_line_to_log)
     
     # history['validation_accuracy'].append(val_acc)
 
+    #############################################################################
     scheduler.step(val_loss)
     
     # is_best = val_loss < best_val_loss
