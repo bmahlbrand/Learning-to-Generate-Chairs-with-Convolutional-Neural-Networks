@@ -53,7 +53,7 @@ class Net(nn.Module):
         t = F.relu(self.fc2_t(t))
         
         # concatenate three tensors
-        x = torch.cat([c, v, t], dim=1)
+        x = torch.cat((c, v, t), dim=0)
 
         x = F.relu(self.fc3(x))
         x = F.relu(self.fc4(x))
