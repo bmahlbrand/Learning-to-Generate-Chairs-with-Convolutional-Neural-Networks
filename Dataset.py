@@ -25,15 +25,16 @@ class Dataset():
         """
         # get the path of train.csv and valid.csv
         if is_train:
-            csv_path = folderPath + '/chairs.train.csv'
+            csv_path = folderPath + '/chairs.train.class.csv'
             print("loading train dataset")
         else:
-            csv_path = folderPath + '/chairs.valid.csv'
+            csv_path = folderPath + '/chairs.valid.class.csv'
             print("loading validataion dataset")    
         # read the data
         self.data_info = pd.read_csv(csv_path, header=None)
         # get the image path
         self.images =  np.asarray(self.data_info.iloc[:, 0])
+        self.categories = np.asarray(self.data_info.iloc[:, 1])
         self.masks = [re.sub(r'render', r'mask', image) for image in self.images]
         print('loaded ', len(self.images), ' files')
         # print(self.files)
@@ -55,6 +56,9 @@ class Dataset():
         image = F.to_pil_image(image)
         image = self.transformations(image)
         
+        # load the category of the image
+        category = int(self.categories[index])
+
         # load masks
         mask_filename = self.masks[index]
         #print(io.imread(mask_filename).shape)
@@ -78,9 +82,32 @@ class Dataset():
         # remove the first char to get the parameters
         phi = int(pieces[1].strip('p'))
         theta = int(pieces[2].strip('t'))
-        rho = int(pieces[3].strip('r').split('.')[0])
+        #rho = int(pieces[3].strip('r').split('.')[0])
+        
+        # construct the class vector
+        c = np.zeros(809)
+        c[category] = 1
+        
+        # construct the view vector
+        v = np.zeros(4)
+        v[0] = np.sin(theta/180 * np.pi)
+        v[1] = np.cos(theta/180 * np.pi)
+        v[2] = np.sin(phi/180 * np.pi)
+        v[3] = np.sin(phi/180 * np.pi)
+        
+        # construct the tranform parameter vector
+        t = np.ones(12)
+        
+        # transform them into tensor and into tench.FloatTensor
+        c = torch.from_numpy(c)
+        v = torch.from_numpy(v)
+        t = torch.from_numpy(t)
+        c = c.float()
+        v = v.float()
+        t = t.float()
 
-        return image, mask, phi, theta, rho
+        return image, mask, c, v, t
+
 
 if __name__ == '__main__':
 
