@@ -88,10 +88,10 @@ def parse_cli():
                         help='workers (default: 0)')
 
     parser.add_argument('--train_dir', default='../data', type=str, metavar='PATHT',
-                        help='path to latest checkpoint (default: none)')
+                        help='path to latest checkpoint (default: data folder)')
 
     parser.add_argument('--val_dir', default='../data', type=str, metavar='PATHV',
-                        help='path to latest checkpoint (default: none)')                    
+                        help='path to latest checkpoint (default: data folder)')                    
 
     args = parser.parse_args()
 
@@ -102,34 +102,27 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
     end = time.time()
     model.train()
 
-    #     if batch_idx % args.log_interval == 0:
-    #         log_callback('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-    #             epoch, batch_idx * len(data), len(loader.dataset),
-    #             100. * batch_idx / len(loader), loss.item()))
-
-        # return losses
-
     for param_group in optimizer.param_groups:
         learning_rate = param_group['lr']
 
-    # the output of the dataloader is (batch_idx, image, mask, phi, theta, rho)
+    # the output of the dataloader is (batch_idx, image, mask, c, v, t)
     for batch_idx, data in enumerate(loader):
-        target_image, target_mask, phi, theta, rho = data
+        target_image, target_mask, input_c, input_v, input_t = data
         target_image = target_image.to(device, non_blocking=True)
         target_mask = target_mask.to(device, non_blocking=True)
-        phi = phi.to(device, non_blocking=True)
-        theta = theta.to(device, non_blocking=True)
-        rho = rho.to(device, non_blocking=True)
+        input_c = input_c.to(device, non_blocking=True)
+        input_v = input_v.to(device, non_blocking=True)
+        input_t = input_t.to(device, non_blocking=True)
 
         # learning_rate = 0.
         # learning_rate = adjust_learning_rate(optimizer, iters, config.base_lr, policy=config.lr_policy,
         #                                         policy_parameter=config.policy_parameter, multiple=multiple)
         data_time.update(time.time() - end)
-        ###############################################333
-        out_image, out_mask = model()
-        ################################################3#
-        # viz_utils.plot_heatmap(heat1.cpu().detach().numpy())
+        
+        # input all the input vectors into the model 
+        out_image, out_mask = model(input_c, input_v, input_t)
 
+        # compute the loss according to the paper
         loss1 = criterion1(out_image, target_image)
         loss2 = criterion2(out_mask, target_mask)
         loss = loss1 + lamb * loss2 
@@ -140,117 +133,83 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
 
         batch_time.update(time.time() - end)
         end = time.time()
-
+ 
+        # record essential informations into log file.
         if batch_idx % args.log_interval == 0:
             log_callback('Epoch: {0}\t'
                     'Time {batch_time.sum:.3f}s / {1} batches, ({batch_time.avg:.3f})\t'
                     'Data load {data_time.sum:.3f}s / {1} batches, ({data_time.avg:3f})\n'
-                    'Learning rate = {2}\n'
-                    'Loss = {loss.val:.8f} (average = {loss.avg:.8f})\n'.format(
+                    'Learning rate = {2}\n'.format(
                 epoch, args.log_interval, learning_rate, batch_time=batch_time,
-                data_time=data_time, loss=loss.item()))
+                data_time=data_time))
             
             log_callback('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(input), len(loader.dataset),
                 100. * batch_idx / len(loader), loss.item()))
             log_callback()
             
-            log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
-                    .format(1, loss1=loss))
+            log_callback('Loss{0} = {loss1:.8f}\t'
+                    .format(1, loss1=loss1.item()))
             
-            log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
-                    .format(2, loss1=loss2))
+            log_callback('Loss{0} = {loss1.val:.8f}\t'
+                    .format(2, loss1=loss2.item()))
 
             log_callback()
             log_callback("current time: " + Timer.timeString())
             
             batch_time.reset()
             data_time.reset()
-            losses.reset()
 
     torch_utils.save(folderPath + 'ChairCNN_' + str(epoch) + '.cpkt', epoch, model, optimizer, scheduler)
 
 def validation(model, criterion1, criterion2, lamb, loader, device, log_callback):
     end = time.time()
     model.eval()
-    # validation_loss = 0.0
-    # correct = 0
-    # with torch.no_grad():
-    #     for data, target in loader:
-    #         data, target = data.to(device), target.to(device)
-    #         output = model(data)
-    #         validation_loss += criterion(output, target).item() # sum up batch loss
-    #         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
-    #         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
-
-    # validation_loss /= float(len(loader.dataset))
-    # validation_acc  = float(correct) / float(len(loader.dataset))
-    # log_callback('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.4f}%)\n'.format(
-    #     validation_loss, correct, len(loader.dataset),
-    #     100. * validation_acc))
 
     # return validation_loss, validation_acc
     with torch.no_grad():
-        # the output of the dataloader is (batch_idx, image, mask, phi, theta, rho)
+        # the output of the dataloader is (batch_idx, image, mask, c, v, t)
         for batch_idx, data in enumerate(loader):
-            target_image, target_mask, phi, theta, rho = data
+            target_image, target_mask, input_c, input_v, input_t = data
             target_image = target_image.to(device, non_blocking=True)
             target_mask = target_mask.to(device, non_blocking=True)
-            phi = phi.to(device, non_blocking=True)
-            theta = theta.to(device, non_blocking=True)
-            rho = rho.to(device, non_blocking=True)
+            input_c = input_c.to(device, non_blocking=True)
+            input_v = input_v.to(device, non_blocking=True)
+            input_t = input_t.to(device, non_blocking=True)
 
-        # learning_rate = 0.
-        # learning_rate = adjust_learning_rate(optimizer, iters, config.base_lr, policy=config.lr_policy,
-        #                                         policy_parameter=config.policy_parameter, multiple=multiple)
-        data_time.update(time.time() - end)
-        ###############################################333
-        out_image, out_mask = model()
-        ################################################3#
-        # viz_utils.plot_heatmap(heat1.cpu().detach().numpy())
-
-        loss1 = criterion1(out_image, target_image)
-        loss2 = criterion2(out_mask, target_mask)
-        loss = loss1 + lamb * loss2 
-        for batch_idx, (input, target) in enumerate(loader):
-            input, target = input.to(device, non_blocking=True), target.to(device, non_blocking=True)
-    ##############################################################################3        
-            out_image, out_mask = model(input)
-
-            loss1 = criterion1(out_image, target)
-            loss2 = criterion2(out_mask, target)
-            loss = loss1 + lam * loss2
-            #losses.update(loss.item(), input.size(0))
-    ##############################################################################
+            # compute the output
+            out_image, out_mask = model(input_c, input_v, input_t)
+            
+            # compute the loss
+            loss1 = criterion1(out_image, target_image)
+            loss2 = criterion2(out_mask, target_mask)
+            loss = loss1 + lamb * loss2 
+        
             batch_time.update(time.time() - end)
             end = time.time()
-            # is_best = losses.avg < best_model
-            # best_model = min(best_model, losses.avg)
-            # save_checkpoint({
-            #     'iter': iters,
-            #     'state_dict': model.state_dict(),
-            # }, is_best, args.model_name)
-            # if batch_idx % args.log_interval == 0:
 
+        # records essential information into log file.
         log_callback('epoch: {0}\t'
                 'Time {batch_time.sum:.3f}s / {1} epochs, ({batch_time.avg:.3f})\t'
                 'Data load {data_time.sum:.3f}s / {1} epochs, ({data_time.avg:3f})\n'
-                'Loss = {loss.val:.8f} (average = {loss.avg:.8f})\n'.format(
+                'Loss = {loss:.8f}\n'.format(
             epoch, batch_idx, batch_time=batch_time,
-            data_time=data_time, loss=losses))
+            data_time=data_time, loss=loss.item()))
         
         log_callback()
         
-        log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
-                .format(1, loss1=loss))
+        log_callback('Loss{0} = {loss1:.8f}\t'
+                .format(1, loss1=loss1.item()))
         
-        log_callback('Loss{0} = {loss1.val:.8f} (average = {loss1.avg:.8f})\t'
-                .format(2, loss1=loss2))
+        log_callback('Loss{0} = {loss1:.8f}\t'
+                .format(2, loss1=loss2.item()))
 
         log_callback(Timer.timeString())
 
         batch_time.reset()
-        losses.reset()
+        
+        #TODO: compute the validation accuracy.
+         
 ########################Is there some problem here with 0.??######################
         return losses.avg, 0.
 ###################################################################################        
@@ -259,45 +218,40 @@ args = parse_cli()
 
 train_dir = args.train_dir
 val_dir = args.val_dir
-#################################################################################################################################################33
+
+# define train dataloader and validation dataloader
 train_loader = torch.utils.data.DataLoader(Dataset(train_dir, is_train=True), batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
 val_loader = torch.utils.data.DataLoader(Dataset(val_dir, is_train=False), batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
-########################################################################################################################################################
-# criterion = nn.MSELoss().cuda()
-
-# optimizer = torch.optim.SGD(params, config.base_lr, momentum=config.momentum,
-#                             weight_decay=config.weight_decay)
 
 start_epoch = 1
 model = Net()
-##############################################################################33
-# optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, dampening=.01)
+
+# define optimizer
 optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), eps=args.epsilon)
+
+# TODO: implement the scheduler according to the paper
 #################################################################################3
 scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=3, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=2, min_lr=0, eps=1e-08)
-##########################################################################33
+
+# define the critrion, which is loss function
 criterion1 = nn.MSELoss(size_average=False) # we compute the sum of MSE instead of the average of it.
 #criterion2 = nn.MSELoss(size_average=False) # if criterion for segmentation is MSE loss
 criterion2 = nn.NLLLoss() # if criterion for segmentation is NLL loss
 #lam = 0.1 # if criterion2 is squared Eulidean distance
-lam = 100  # if criterion2 is NLLLoss
-############################################################################33
+lamb = 100  # if criterion2 is NLLLoss
+
 if args.resume:
     start_epoch, model, optimizer, scheduler = torch_utils.load(args.resume, model, optimizer, start_epoch, scheduler)
     append_line_to_log('resuming ' + args.resume + '... at epoch ' + str(start_epoch))
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 append_line_to_log('executing on device: ')
 append_line_to_log(str(device))
 
+# put model into the corresponding device
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
-##################################################################
-criterion1.to(device)
-criterion2.to(device)
-###################################################################
-torch.backends.cudnn.benchmark = True
 
+torch.backends.cudnn.benchmark = True
 
 history = {'losses': [], 'validation_accuracy': []}
 
@@ -306,17 +260,12 @@ best_val_acc = 0.
 
 for epoch in range(start_epoch, args.epochs + 1):
     
-    #####################################################################33
     # loss = 
-    train(epoch, model, optimizer, criterion1, criterion2, lam, train_loader, device, append_line_to_log)
-    # history['losses'].extend(loss)
+    train(epoch, model, optimizer, criterion1, criterion2, lamb, train_loader, device, append_line_to_log)
 
-    val_loss, val_acc = validation(model, criterion1, criterion2, lam,  val_loader, device, append_line_to_log)
+    val_loss, val_acc = validation(model, criterion1, criterion2, lamb, val_loader, device, append_line_to_log)
     
-    # history['validation_accuracy'].append(val_acc)
-
-    #############################################################################
-    scheduler.step(val_loss)
+    scheduler.step()
     
     # is_best = val_loss < best_val_loss
     # is_best = val_acc > best_val_acc
