@@ -114,9 +114,7 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
         input_v = input_v.to(device, non_blocking=True)
         input_t = input_t.to(device, non_blocking=True)
 
-        # learning_rate = 0.
-        # learning_rate = adjust_learning_rate(optimizer, iters, config.base_lr, policy=config.lr_policy,
-        #                                         policy_parameter=config.policy_parameter, multiple=multiple)
+        
         data_time.update(time.time() - end)
         
         # input all the input vectors into the model 
@@ -207,14 +205,21 @@ def validation(model, criterion1, criterion2, lamb, loader, device, log_callback
         log_callback(Timer.timeString())
 
         batch_time.reset()
-        
-        #TODO: compute the validation accuracy.
          
-########################Is there some problem here with 0.??######################
-        return losses.avg, 0.
-###################################################################################        
+        return loss.item()        
 
+def init_weights(m):
+    """
+      initialize the weights with Gaussian noise as suggested by He et al.
+    """
+    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+
+
+####################################### main ########################################
 args = parse_cli()
+
+# to make everytime the randomization is the same
+torch.manual_seed(args.seed)
 
 train_dir = args.train_dir
 val_dir = args.val_dir
@@ -225,13 +230,15 @@ val_loader = torch.utils.data.DataLoader(Dataset(val_dir, is_train=False), batch
 
 start_epoch = 1
 model = Net()
+# initialize weights with Gassian noise.
+model.apply(init_weights)
 
 # define optimizer
 optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), eps=args.epsilon)
 
-# TODO: implement the scheduler according to the paper
-#################################################################################3
-scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=3, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=2, min_lr=0, eps=1e-08)
+# define scheduler
+# scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=3, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=2, min_lr=0, eps=1e-08)
+scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
 
 # define the critrion, which is loss function
 criterion1 = nn.MSELoss(size_average=False) # we compute the sum of MSE instead of the average of it.
@@ -244,12 +251,13 @@ if args.resume:
     start_epoch, model, optimizer, scheduler = torch_utils.load(args.resume, model, optimizer, start_epoch, scheduler)
     append_line_to_log('resuming ' + args.resume + '... at epoch ' + str(start_epoch))
 
-append_line_to_log('executing on device: ')
-append_line_to_log(str(device))
 
 # put model into the corresponding device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
+
+append_line_to_log('executing on device: ')
+append_line_to_log(str(device))
 
 torch.backends.cudnn.benchmark = True
 
@@ -263,32 +271,7 @@ for epoch in range(start_epoch, args.epochs + 1):
     # loss = 
     train(epoch, model, optimizer, criterion1, criterion2, lamb, train_loader, device, append_line_to_log)
 
-    val_loss, val_acc = validation(model, criterion1, criterion2, lamb, val_loader, device, append_line_to_log)
+    val_loss = validation(model, criterion1, criterion2, lamb, val_loader, device, append_line_to_log)
     
-    scheduler.step()
+    scheduler.step(val_loss) # to use ReduceLROnPlateau must specify the matric
     
-    # is_best = val_loss < best_val_loss
-    # is_best = val_acc > best_val_acc
-
-    # best_val_loss = min(val_loss, best_val_loss)
-    # best_val_acc = max(val_acc, best_val_acc)
-
-    # if is_best:
-    #     best_model_file = 'best_model_' + str(epoch) + '.pth'
-    #     model_file = folderPath + best_model_file
-    #     torch.save(model.state_dict(), best_model_file)
-    # model_file = 'model_' + str(epoch) + '.pth'
-    # model_file = folderPath + model_file
-
-    # torch.save(model.state_dict(), model_file)
-    # append_line_to_log('Saved model to ' + model_file + '. You can run `python evaluate.py ' + model_file + '` to generate the Kaggle formatted csv file\n')
-
-##########################################
-
-# torch.manual_seed(args.seed)
-# from utils.fs_utils import get_all_filenames
-
-# if __name__ == '__main__':
-#     print(params)
-#     print(get_all_filenames('datasets/lspet_dataset/images/', '*.jpg'))
-#     # print(read_data_file('datasets/lsp_dataset/'))
