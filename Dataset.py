@@ -33,8 +33,9 @@ class Dataset():
         # read the data
         self.data_info = pd.read_csv(csv_path, header=None)
         # get the image path
-        self.images =  np.asarray(self.data_info.iloc[:, 0])
-        self.categories = np.asarray(self.data_info.iloc[:, 1])
+        # Note to remove the header!!
+        self.images =  np.asarray(self.data_info.iloc[:, 0])[1:]
+        self.categories = np.asarray(self.data_info.iloc[:, 1])[1:]
         self.masks = [re.sub(r'render', r'mask', image) for image in self.images]
         print('loaded ', len(self.images), ' files')
         # print(self.files)
