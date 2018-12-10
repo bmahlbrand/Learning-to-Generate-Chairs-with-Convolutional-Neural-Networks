@@ -6,7 +6,7 @@ epsilon: 1e-6
 # hyperparameters
 init_learning_rate: 0.0005
 batch_size: 128
-epochs: 100  # not sure what it is.
+epochs: 1000 
 decay: 0
 dampening: 0
 
@@ -14,3 +14,8 @@ dampening: 0
 log_interval: 100
 seed: 1
 best_model: best_model.pth
+
+# how to get the epochs:
+# original data size 809*62 = 50158, paper use 500,000 iters and minisize 128
+# one epoch iters = 50158/128 = 392 iters/epoch, so epochs = 500,000/392 = 1275
+# we have only 75% of their data size, so 1275*0.75 = 1000 
