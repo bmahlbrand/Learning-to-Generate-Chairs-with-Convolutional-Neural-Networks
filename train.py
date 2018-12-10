@@ -122,7 +122,8 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
 
         # compute the loss according to the paper
         loss1 = criterion1(out_image, target_image)
-        loss2 = criterion2(out_mask, target_mask)
+        # Note that the target should remove the channel size as stated in document
+        loss2 = criterion2(out_mask, target_mask.long().squeeze()) 
         loss = loss1 + lamb * loss2 
         
         optimizer.zero_grad()
@@ -142,14 +143,14 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
                 data_time=data_time))
             
             log_callback('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(input), len(loader.dataset),
+                epoch, batch_idx * len(data), len(loader.dataset),
                 100. * batch_idx / len(loader), loss.item()))
             log_callback()
             
             log_callback('Loss{0} = {loss1:.8f}\t'
                     .format(1, loss1=loss1.item()))
             
-            log_callback('Loss{0} = {loss1.val:.8f}\t'
+            log_callback('Loss{0} = {loss1:.8f}\t'
                     .format(2, loss1=loss2.item()))
 
             log_callback()
@@ -177,10 +178,10 @@ def validation(model, criterion1, criterion2, lamb, loader, device, log_callback
 
             # compute the output
             out_image, out_mask = model(input_c, input_v, input_t)
-            
+           
             # compute the loss
             loss1 = criterion1(out_image, target_image)
-            loss2 = criterion2(out_mask, target_mask)
+            loss2 = criterion2(out_mask, target_mask.long().squeeze())
             loss = loss1 + lamb * loss2 
         
             batch_time.update(time.time() - end)
@@ -245,10 +246,10 @@ optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.b
 scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
 
 # define the critrion, which is loss function
-criterion1 = nn.MSELoss(reduction=sum) # we compute the sum of MSE instead of the average of it.
-#criterion2 = nn.MSELoss(reduction=sum) # if criterion for segmentation is MSE loss
-criterion2 = nn.NLLLoss() # if criterion for segmentation is NLL loss
-#lam = 0.1 # if criterion2 is squared Eulidean distance
+criterion1 = nn.MSELoss() # we compute the sum of MSE instead of the average of it.
+#criterion2 = nn.MSELoss() # if criterion for segmentation is MSE loss
+criterion2 = nn.CrossEntropyLoss() # if criterion for segmentation is NLL loss
+#lamb = 0.1 # if criterion2 is squared Eulidean distance
 lamb = 100  # if criterion2 is NLLLoss
 
 if args.resume:
