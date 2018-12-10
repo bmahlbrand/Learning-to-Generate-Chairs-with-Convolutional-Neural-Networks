@@ -37,8 +37,9 @@ class Net(nn.Module):
         # upconv4 for generating the target segmentation mask
         self.upconv4_mask = nn.ConvTranspose2d(48, 1, kernel_size=4, stride=2, padding=1)
         
-        # softmax for mask output if we use NLLLoss
+        # softmax for mask output if we use Cross-Entropy
         self.softmax = nn.Softmax2d()
+        
 
     def forward(self, c, v, t):
 
