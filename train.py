@@ -212,8 +212,12 @@ def init_weights(m):
     """
       initialize the weights with Gaussian noise as suggested by He et al.
     """
-    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-
+    if isinstance(m, nn.Conv2d):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+    elif isinstance(m, nn.ConvTranspose2d):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+    elif isinstance(m, nn.Linear):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')    
 
 ####################################### main ########################################
 args = parse_cli()
@@ -241,8 +245,8 @@ optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1, args.b
 scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
 
 # define the critrion, which is loss function
-criterion1 = nn.MSELoss(size_average=False) # we compute the sum of MSE instead of the average of it.
-#criterion2 = nn.MSELoss(size_average=False) # if criterion for segmentation is MSE loss
+criterion1 = nn.MSELoss(reduction=sum) # we compute the sum of MSE instead of the average of it.
+#criterion2 = nn.MSELoss(reduction=sum) # if criterion for segmentation is MSE loss
 criterion2 = nn.NLLLoss() # if criterion for segmentation is NLL loss
 #lam = 0.1 # if criterion2 is squared Eulidean distance
 lamb = 100  # if criterion2 is NLLLoss
