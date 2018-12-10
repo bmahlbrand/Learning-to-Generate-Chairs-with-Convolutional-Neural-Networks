@@ -261,10 +261,10 @@ append_line_to_log(str(device))
 
 torch.backends.cudnn.benchmark = True
 
-history = {'losses': [], 'validation_accuracy': []}
+#history = {'losses': [], 'validation_accuracy': []}
+history = {'validation_loss':[]}
 
 best_val_loss = np.inf
-best_val_acc = 0.
 
 for epoch in range(start_epoch, args.epochs + 1):
     
@@ -274,4 +274,17 @@ for epoch in range(start_epoch, args.epochs + 1):
     val_loss = validation(model, criterion1, criterion2, lamb, val_loader, device, append_line_to_log)
     
     scheduler.step(val_loss) # to use ReduceLROnPlateau must specify the matric
-    
+
+    # save the best model
+    is_best = val_loss < best_val_loss
+    best_val_loss = min(val_loss, best_val_loss)
+
+    if is_best:
+         best_model_file = 'best_model_' + str(epoch) + '.pth'
+         model_file = folderPath + best_model_file
+         torch.save(model.state_dict(), best_model_file)
+    model_file = 'model_' + str(epoch) + '.pth'
+    model_file = folderPath + model_file
+
+    torch.save(model.state_dict(), model_file)
+    append_line_to_log('Saved model to ' + model_file)
