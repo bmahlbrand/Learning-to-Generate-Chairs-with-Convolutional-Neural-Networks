@@ -38,7 +38,10 @@ class Net(nn.Module):
         self.upconv4_mask = nn.ConvTranspose2d(48, 1, kernel_size=4, stride=2, padding=1)
         
         # softmax for mask output if we use Cross-Entropy
-        self.softmax = nn.Softmax2d()
+        # self.softmax = nn.Softmax2d()
+        # when use softmax, all the loss is 0, so we change sigmoid
+        # and the loss function to nn.BCELoss()
+        self.sigmoid = nn.Sigmoid()
         
 
     def forward(self, c, v, t):
@@ -74,6 +77,6 @@ class Net(nn.Module):
         # to get the two ouputs
         image = self.upconv4_image(x)
         # mask = self.upconv4_mask(x) # if use squared Euclidean distance
-        mask = self.softmax(self.upconv4_mask(x))  # if use NLL loss
-
+        # mask = self.softmax(self.upconv4_mask(x))  # if use NLL loss
+        mask = self.sigmoid(self.upconv4_mask(x))
         return image, mask
