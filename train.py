@@ -123,7 +123,8 @@ def train(epoch, model, optimizer, criterion1, criterion2, lamb, loader, device,
         # compute the loss according to the paper
         loss1 = criterion1(out_image, target_image)
         # Note that the target should remove the channel size as stated in document
-        loss2 = criterion2(out_mask, target_mask.long().squeeze()) 
+        #loss2 = criterion2(out_mask, target_mask.long().squeeze()) 
+        loss2 = criterion2(out_mask, target_mask)
         loss = loss1 + lamb * loss2 
         
         optimizer.zero_grad()
@@ -181,7 +182,8 @@ def validation(model, criterion1, criterion2, lamb, loader, device, log_callback
            
             # compute the loss
             loss1 = criterion1(out_image, target_image)
-            loss2 = criterion2(out_mask, target_mask.long().squeeze())
+            #loss2 = criterion2(out_mask, target_mask.long().squeeze())
+            loss2 = criterion2(out_mask, target_mask)
             loss = loss1 + lamb * loss2 
         
             batch_time.update(time.time() - end)
@@ -248,7 +250,8 @@ scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, pa
 # define the critrion, which is loss function
 criterion1 = nn.MSELoss() # we compute the sum of MSE instead of the average of it.
 #criterion2 = nn.MSELoss() # if criterion for segmentation is MSE loss
-criterion2 = nn.CrossEntropyLoss() # if criterion for segmentation is NLL loss
+#criterion2 = nn.CrossEntropyLoss() # if criterion for segmentation is NLL loss
+criterion2 = nn.BCELoss()
 #lamb = 0.1 # if criterion2 is squared Eulidean distance
 lamb = 100  # if criterion2 is NLLLoss
 
