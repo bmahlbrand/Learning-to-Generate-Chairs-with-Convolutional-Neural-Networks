@@ -21,49 +21,59 @@ def import_best_model(best_model, category, phi, theta):
     model.load_state_dict(state_dict)
     model.eval()
     
-    # convert c, phi and theta into corresponding inputs for the network
-    # construct the class vector
-    c = np.zeros(809)
-    c[category-1] = 1
+    with torch.no_grad():
+        # convert c, phi and theta into corresponding inputs for the network
+        # construct the class vector
+        c = np.zeros(809)
+        c[category-1] = 1
         
-    # construct the view vector
-    v = np.zeros(4)
-    v[0] = np.sin(theta/180 * np.pi)
-    v[1] = np.cos(theta/180 * np.pi)
-    v[2] = np.sin(phi/180 * np.pi)
-    v[3] = np.sin(phi/180 * np.pi)
+        # construct the view vector
+        v = np.zeros(4)
+        v[0] = np.sin(theta/180 * np.pi)
+        v[1] = np.cos(theta/180 * np.pi)
+        v[2] = np.sin(phi/180 * np.pi)
+        v[3] = np.sin(phi/180 * np.pi)
         
-    # construct the tranform parameter vector
-    t = np.ones(12)
+        # construct the tranform parameter vector
+        t = np.ones(12)
         
-    # transform them into tensor and into tench.FloatTensor
-    c = torch.from_numpy(c)
-    v = torch.from_numpy(v)
-    t = torch.from_numpy(t)
-    c = c.float()
-    v = v.float()
-    t = t.float()
+        # transform them into tensor and into tench.FloatTensor
+        c = torch.from_numpy(c)
+        v = torch.from_numpy(v)
+        t = torch.from_numpy(t)
+        c = c.float()
+        v = v.float()
+        t = t.float()
+        
+        # add the batch axis
+        c = c.unsqueeze(0)
+        v = v.unsqueeze(0)
+        t = t.unsqueeze(0)
     
-    # compute out the image and mask
-    image, mask = model(c, v, t)
+        # compute out the image and mask
+        image, mask = model(c, v, t)
+        
+        # convert to the form which can be displayed by plt.
+        image = image.squeeze().numpy().transpose(1, 2, 0)
+        mask = mask.squeeze().numpy()
 
-    return image, mask
+        return image, mask
 
-def imshow(image, is_image=True):
-    """
-    Argument:
-            image: image or mask, returned from import_best_model
-            is_image: True for showing image, False for showing mask
-    """
-    if is_image:
-        plt.imshow(image.numpy().transpose(1, 2, 0))
-    else:
-        plt.imshow(image.numpy())
-    
     
 if __name__ == "__main__":
     
     best_model = "./best_model_78.pth"
     image, mask = import_best_model(best_model, 666, 20, 300)
-    imshow(image)
+    
+    # create two subplots, show the image at the first
+    # and the mask at the second one.
+    fig = plt.figure()
+    ax1 = fig.add_subplot(1, 2, 1)
+    plt.imshow(image)
+    plt.axis('off')
+    ax2 = fig.add_subplot(1, 2, 2)
+    plt.imshow(mask)
+    plt.axis('off')
+    plt.show()
+
 
