@@ -55,8 +55,10 @@ def import_best_model(best_model, category, phi, theta):
         
         # convert to the form which can be displayed by plt.
         image = image.squeeze().numpy().transpose(1, 2, 0)
+        image[np.where(image<=0)] = 0
+        image[np.where(image>=1)] = 1
         mask = mask.squeeze().numpy()
-
+        
         return image, mask
 
     
