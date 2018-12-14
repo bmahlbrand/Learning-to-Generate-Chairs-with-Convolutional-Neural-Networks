@@ -43,7 +43,8 @@ class Dataset():
         # do the transformation
         self.image_transformations = transforms.Compose([transforms.Resize(output_size),\
                                                          transforms.ToTensor(),\
-                                                         transforms.Normalize((243.4350, 243.0158, 242.7103), (46.6144, 48.0119, 49.0968))])
+                                                         transforms.Normalize((243.4350, 243.0158, 242.7103),\
+                                                                              (46.6144, 48.0119, 49.0968))])
         self.mask_transformations = transforms.Compose([transforms.Resize(output_size),\
                                                         transforms.ToTensor()])
 
