@@ -41,11 +41,7 @@ class Dataset():
         # print(self.files)
         
         # do the transformation
-        self.image_transformations = transforms.Compose([transforms.Resize(output_size),\
-                                                         transforms.ToTensor(),\
-                                                         transforms.Normalize((243.4350, 243.0158, 242.7103),\
-                                                                              (46.6144, 48.0119, 49.0968))])
-        self.mask_transformations = transforms.Compose([transforms.Resize(output_size),\
+        self.transformations = transforms.Compose([transforms.Resize(output_size),\
                                                         transforms.ToTensor()])
 
     def __len__(self):
@@ -59,8 +55,8 @@ class Dataset():
         #print(image.size())
         #image = transforms.ToPILImage(image)
         image = F.to_pil_image(image)
-        image = self.image_transformations(image)
-        
+        image = self.transformations(image)
+
         # load the category of the image
         category = int(self.categories[index])
 
@@ -70,7 +66,7 @@ class Dataset():
         mask = torch.from_numpy(io.imread(mask_filename)[:,:,newaxis].transpose((2, 0, 1)))
         #print(mask.size())
         mask = F.to_pil_image(mask)
-        mask = self.mask_transformations(mask)
+        mask = self.transformations(mask)
 
         # path: like "../data/rendered_chairs/b663f1e4df6c51fe19fb4103277a6b93/renders"
         # filename: like "image_001_p020_t011_r096.png"
