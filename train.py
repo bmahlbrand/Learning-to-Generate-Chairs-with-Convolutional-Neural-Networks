@@ -29,8 +29,8 @@ create_folder('checkpoints')
 folderPath = 'checkpoints/session_' + Timer.timeFilenameString() + '/'
 create_folder(folderPath)
 
-create_folder('logs')
-logPath = 'logs/log_' + Timer.timeFilenameString()
+create_folder('log')
+logPath = 'log/log_' + Timer.timeFilenameString()
 
 def append_line_to_log(line = '\n'):
     with open(logPath, 'a') as f:
