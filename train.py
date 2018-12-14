@@ -289,7 +289,7 @@ for epoch in range(start_epoch, args.epochs + 1):
 
     if is_best:
          best_model_file = 'best_model_' + str(epoch) + '.pth'
-         model_file = folderPath + best_model_file
+         best_model_file = folderPath + best_model_file
          torch.save(model.state_dict(), best_model_file)
     model_file = 'model_' + str(epoch) + '.pth'
     model_file = folderPath + model_file
