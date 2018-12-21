@@ -37,8 +37,12 @@ class Net(nn.Module):
         # upconv4 for generating the target segmentation mask
         self.upconv4_mask = nn.ConvTranspose2d(48, 1, kernel_size=4, stride=2, padding=1)
         
-        # softmax for mask output if we use NLLLoss
-        self.softmax = nn.Softmax2d()
+        # softmax for mask output if we use Cross-Entropy
+        # self.softmax = nn.Softmax2d()
+        # when use softmax, all the loss is 0, so we change sigmoid
+        # and the loss function to nn.BCELoss()
+        self.sigmoid = nn.Sigmoid()
+        
 
     def forward(self, c, v, t):
 
@@ -53,7 +57,7 @@ class Net(nn.Module):
         t = F.relu(self.fc2_t(t))
         
         # concatenate three tensors
-        x = torch.cat([c, v, t], dim=1)
+        x = torch.cat((c, v, t), dim=1)
 
         x = F.relu(self.fc3(x))
         x = F.relu(self.fc4(x))
@@ -73,6 +77,6 @@ class Net(nn.Module):
         # to get the two ouputs
         image = self.upconv4_image(x)
         # mask = self.upconv4_mask(x) # if use squared Euclidean distance
-        mask = self.softmax(self.upconv4_mask(x))  # if use NLL loss
-
+        # mask = self.softmax(self.upconv4_mask(x))  # if use NLL loss
+        mask = self.sigmoid(self.upconv4_mask(x))
         return image, mask
